@@ -20,9 +20,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Paint
+import androidx.compose.ui.graphics.PaintingStyle
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
+import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -199,26 +201,37 @@ fun formatRecordingTime(seconds: Int): String {
 fun DrawScope.drawImprovedVisualizer(data: FloatArray) {
     val width = size.width
     val height = size.height
-    val barWidth = width / (data.size * 2)
-    val spacing = barWidth / 2
+    val barWidth = width / data.size
     val maxBarHeight = height * 0.8f
 
     drawIntoCanvas { canvas ->
+        val paint = Paint().apply {
+            color = Color(0xFF00E5FF)  // Bright cyan color
+            strokeWidth = 2.dp.toPx() // Thinner line
+            strokeCap = StrokeCap.Round
+        }
+
+        // Ensure the visualizer is contained within the Canvas
+        val halfHeight = height / 2
+        val maxWidth = width - barWidth
+
         data.forEachIndexed { index, value ->
             val barHeight = (value * maxBarHeight).coerceIn(0f, maxBarHeight)
-            val x = index * (barWidth + spacing) + spacing
-            val y = height / 2
+            val x = (index * barWidth).coerceIn(0f, maxWidth)
+            val y = halfHeight - barHeight / 2
 
-            // Draw a line for a smoother look
-            canvas.drawLine(
-                p1 = Offset(x, y - barHeight / 2),
-                p2 = Offset(x, y + barHeight / 2),
-                paint = Paint().apply {
-                    color = Color(0xFF00E5FF)  // A bright cyan color
-                    strokeWidth = barWidth
-                    strokeCap = StrokeCap.Round
-                }
-            )
+            // Draw a line connecting to the next data point
+            if (index < data.size - 1) {
+                val nextX = ((index + 1) * barWidth).coerceIn(0f, maxWidth)
+                val nextBarHeight = ((data[index + 1] * maxBarHeight).coerceIn(0f, maxBarHeight))
+                val nextY = halfHeight - nextBarHeight / 2
+
+                canvas.drawLine(
+                    p1 = Offset(x, y),
+                    p2 = Offset(nextX, nextY),
+                    paint = paint
+                )
+            }
         }
     }
 }
